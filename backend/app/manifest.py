@@ -17,7 +17,8 @@ def build_manifest(doc_id, pdf_file, doc_data, chunks):
             "doc_md": "doc.md",
             "doc_json": "doc.json",
             "chunks_json": "chunks.json",
-            "manifest_json": "manifest.json"
+            "manifest_json": "manifest.json",
+            "chunks_enriched_json": "chunks_enriched.json"
         }
     }
 

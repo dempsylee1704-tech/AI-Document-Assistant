@@ -6,6 +6,7 @@ from manifest import build_manifest
 from io_utils import list_pdf_files
 from config import PROCESSED_DIR, CHUNK_CHAR_SIZE, CHUNK_CHAR_OVERLAP
 from metadata_ai import enrich_chunk_metadata
+from embeddings import create_embbeddings_for_chunks
 
 def main():
     # Convert PDF to Markdown
@@ -34,6 +35,13 @@ def main():
         for chunk in chunks:
             enriched_chunk = enrich_chunk_metadata(chunk)
             enriched_chunks.append(enriched_chunk)
+
+        embedded_chunks = create_embbeddings_for_chunks(enriched_chunks)
+
+        out_embedded_chunks = out_dir / "chunks_with_embeddings.json"
+
+        with open(out_embedded_chunks, "w", encoding="utf-8") as f:
+            json.dump(embedded_chunks, f, indent=2, ensure_ascii=False)
 
         out_enriched_chunks = out_dir / "chunks_enriched.json"
 
