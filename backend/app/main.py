@@ -7,6 +7,9 @@ from io_utils import list_pdf_files
 from config import PROCESSED_DIR, CHUNK_CHAR_SIZE, CHUNK_CHAR_OVERLAP
 from metadata_ai import enrich_chunk_metadata
 from embeddings import create_embbeddings_for_chunks
+from search import find_top_k_chunks
+from answer import generate_answer
+from vector_db import create_collection, upload_chunks, search_chunks
 
 def main():
     # Convert PDF to Markdown
@@ -37,6 +40,18 @@ def main():
             enriched_chunks.append(enriched_chunk)
 
         embedded_chunks = create_embbeddings_for_chunks(enriched_chunks)
+        query = input("> ")
+
+        create_collection()
+        upload_chunks(embedded_chunks)
+        results = search_chunks(query)
+        answer = generate_answer(query, results)
+
+        print("\nANSWER:\n")
+        print(answer)
+
+        for r in results:
+            print(r["text"])
 
         out_embedded_chunks = out_dir / "chunks_with_embeddings.json"
 
