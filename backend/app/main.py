@@ -7,11 +7,10 @@ from io_utils import list_pdf_files
 from config import PROCESSED_DIR, CHUNK_CHAR_SIZE, CHUNK_CHAR_OVERLAP
 from metadata_ai import enrich_chunk_metadata
 from embeddings import create_embbeddings_for_chunks
-from search import find_top_k_chunks
 from answer import generate_answer
 from vector_db import create_collection, upload_chunks, search_chunks
 
-def main():
+def ingest_documents():
     # Convert PDF to Markdown
     pdf_files = list_pdf_files()
     converter = DocumentConverter()
@@ -33,25 +32,15 @@ def main():
         print(doc_id, len(blocks), "blocks ->", len(chunks), "chunks")
         print("first chunk length:", len(chunks[0]["text"]))
 
-
         enriched_chunks = []
         for chunk in chunks:
             enriched_chunk = enrich_chunk_metadata(chunk)
             enriched_chunks.append(enriched_chunk)
 
         embedded_chunks = create_embbeddings_for_chunks(enriched_chunks)
-        query = input("> ")
 
         create_collection()
-        upload_chunks(embedded_chunks)
-        results = search_chunks(query)
-        answer = generate_answer(query, results)
-
-        print("\nANSWER:\n")
-        print(answer)
-
-        for r in results:
-            print(r["text"])
+        upload_chunks(embedded_chunks, doc_id=doc_id, source_filename=pdf_file.name)
 
         out_embedded_chunks = out_dir / "chunks_with_embeddings.json"
 
@@ -78,12 +67,31 @@ def main():
         with open(out_manifest, "w", encoding="utf-8") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
 
-
-
         # Export and save as Markdown
         md = doc.export_to_markdown()
         with open(out_file, "w", encoding="utf-8") as f:
             f.write(md)
+
+def query_documents():
+    query = input("> ")
+    results = search_chunks(query)
+    answer = generate_answer(query, results)
+
+    print("\nANSWER:\n")
+    print(answer)
+
+    for r in results:
+        print(r,["doc_id"],r["source_filename"],r["page_start"], r["page_end"], r["category"], r["score"])
+
+def main():
+    choice = input("Choose mode: ingest (i) or query (q): ")
+
+    if choice == "i":
+        ingest_documents()
+    elif choice == "q":
+        query_documents()
+    #elif choice == "d":
+        #delete_collection()
 
 if __name__ == "__main__":
     main()
