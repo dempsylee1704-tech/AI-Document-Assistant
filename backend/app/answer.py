@@ -1,4 +1,6 @@
 from openai import OpenAI
+
+from vector_db import search_chunks
 from config import API_KEY
 
 client = OpenAI(api_key=API_KEY)
@@ -26,3 +28,12 @@ Answer:
     )
 
     return respone.output_text
+
+def ask_documents(query, doc_id=None):
+    results = search_chunks(query, doc_id=doc_id)
+    answer = generate_answer(query, results)
+
+    return {
+        "answer": answer,
+        "sources": results
+    }

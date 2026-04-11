@@ -1,4 +1,6 @@
 from qdrant_client import QdrantClient
+from qdrant_client.http.models import PayloadSchemaType
+
 from config import QDRANT_URL, QDRANT_API_KEY
 from qdrant_client.models import VectorParams, Distance, PointStruct, Filter, FieldCondition, MatchValue
 from embeddings import create_embedding
@@ -90,6 +92,15 @@ def search_chunks(query, collection_name="documents", k=3, doc_id=None):
 
     return chunks
 
-#def delete_collection(collection_name="documents"):
+def create_payload_indexes(collection_name="documents"):
+    client.create_payload_index(
+        collection_name=collection_name,
+        field_name="doc_id",
+        field_schema=PayloadSchemaType.KEYWORD
+    )
+
+    return "Payload index for doc_id created."
+
+def delete_collection(collection_name="documents"):
     client.delete_collection(collection_name=collection_name)
     return f"Collection {collection_name} deleted."

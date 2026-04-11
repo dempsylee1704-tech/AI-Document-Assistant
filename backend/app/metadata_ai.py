@@ -48,8 +48,6 @@ def enrich_chunk_metadata(chunk):
 
 
     result = json.loads(clean_text)
-    print(type(result))
-    print(result)
 
 
     try:

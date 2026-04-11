@@ -1,5 +1,6 @@
 from pathlib import Path
-from config import RAW_DIR
+from config import RAW_DIR, PROCESSED_DIR
+import os
 
 def list_pdf_files(raw_dir: Path = RAW_DIR) -> list[Path]:
     # Checks if folder exists
@@ -12,3 +13,14 @@ def list_pdf_files(raw_dir: Path = RAW_DIR) -> list[Path]:
     # Sort PDF's
     pdfs.sort(key=lambda p: p.name.lower())
     return pdfs
+
+def list_processed_documents():
+    documents = []
+
+    for item in os.listdir(PROCESSED_DIR):
+        path = os.path.join(PROCESSED_DIR, item)
+
+        if os.path.isdir(path):
+            documents.append(item)
+
+    return documents

@@ -1,14 +1,16 @@
 from docling.document_converter import DocumentConverter
 import json
+
+from backend.app.answer import ask_documents
 from chunker import merge_blocks_to_chunks
 from extractor import extract_text_blocks
 from manifest import build_manifest
-from io_utils import list_pdf_files
+from io_utils import list_pdf_files, list_processed_documents
 from config import PROCESSED_DIR, CHUNK_CHAR_SIZE, CHUNK_CHAR_OVERLAP
 from metadata_ai import enrich_chunk_metadata
 from embeddings import create_embbeddings_for_chunks
 from answer import generate_answer
-from vector_db import create_collection, upload_chunks, search_chunks
+from vector_db import create_collection, upload_chunks, search_chunks, create_payload_indexes, delete_collection
 
 def ingest_documents():
     # Convert PDF to Markdown
@@ -29,8 +31,8 @@ def ingest_documents():
         blocks = extract_text_blocks(doc_data)
         chunks = merge_blocks_to_chunks(blocks, CHUNK_CHAR_SIZE, CHUNK_CHAR_OVERLAP)
 
-        print(doc_id, len(blocks), "blocks ->", len(chunks), "chunks")
-        print("first chunk length:", len(chunks[0]["text"]))
+        # print(doc_id, len(blocks), "blocks ->", len(chunks), "chunks")
+        # print("first chunk length:", len(chunks[0]["text"]))
 
         enriched_chunks = []
         for chunk in chunks:
@@ -40,6 +42,7 @@ def ingest_documents():
         embedded_chunks = create_embbeddings_for_chunks(enriched_chunks)
 
         create_collection()
+        create_payload_indexes()
         upload_chunks(embedded_chunks, doc_id=doc_id, source_filename=pdf_file.name)
 
         out_embedded_chunks = out_dir / "chunks_with_embeddings.json"
@@ -73,15 +76,31 @@ def ingest_documents():
             f.write(md)
 
 def query_documents():
-    query = input("> ")
-    results = search_chunks(query)
-    answer = generate_answer(query, results)
+    docs = list_processed_documents()
+
+    print("\nAvailable documents:")
+    for d in docs:
+        print("-", d)
+
+    query = input("Question: ")
+    doc_id = input("Document ID (optional): ")
+
+    if not doc_id.strip():
+        doc_id = None
+
+    result = ask_documents(query, doc_id)
 
     print("\nANSWER:\n")
-    print(answer)
+    print(result["answer"])
 
-    for r in results:
-        print(r,["doc_id"],r["source_filename"],r["page_start"], r["page_end"], r["category"], r["score"])
+    print("\nSOURCES:\n")
+
+    for r in result["sources"]:
+        print(r["doc_id"],
+              r["source_filename"],
+              r["page_start"],
+              r["page_end"],
+              r["score"])
 
 def main():
     choice = input("Choose mode: ingest (i) or query (q): ")
@@ -90,8 +109,8 @@ def main():
         ingest_documents()
     elif choice == "q":
         query_documents()
-    #elif choice == "d":
-        #delete_collection()
+    elif choice == "d":
+        delete_collection()
 
 if __name__ == "__main__":
     main()
