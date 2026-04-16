@@ -19,6 +19,12 @@ def ingest_documents():
     for pdf_file in pdf_files:
         doc_id = pdf_file.stem
         out_dir = PROCESSED_DIR / doc_id
+        manifest_path = out_dir / "manifest.json"
+
+        if manifest_path.exists():
+            print(f"Skipping {pdf_file.name}, already processed.")
+            continue
+
         out_dir.mkdir(parents=True, exist_ok=True)
         out_file = out_dir / "doc.md"
         result = converter.convert(pdf_file)
