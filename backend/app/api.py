@@ -1,9 +1,13 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+import shutil
+from uuid import uuid4
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from config import RAW_DIR
-from io_utils import list_processed_documents
+from io_utils import list_processed_documents, get_pdf_path_by_doc_id
 from pydantic import BaseModel
 from answer import ask_documents
+from main import ingest_pdf_file
 
 app = FastAPI()
 
@@ -30,17 +34,33 @@ def ask_question(request: AskRequest):
     return result
 
 @app.post("/upload")
-def upload_file(file: UploadFile = File()):
+async def upload_file(
+        background_tasks: BackgroundTasks,
+        file: UploadFile = File()
+        ):
+
     if not file.filename.lower().endswith(".pdf"):
         HTTPException(status_code=400, detail="Only PDF files are allowed.")
 
-    file_path = RAW_DIR / file.filename
+    unique_name = f"{uuid4()}_{file.filename}"
+    file_path = RAW_DIR / unique_name
 
-    with open(file_path, "wb") as f:
-        f.write(file.file.read())
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    background_tasks.add_task(ingest_pdf_file, file_path)
         
     return {
         "message": "File uploaded successfully.",
-        "filename": file.filename,
+        "filename": unique_name,
         "path": str(file_path)
     }
+
+@app.get("/pdf/{doc_id}")
+def get_pdf(doc_id: str):
+    pdf_path = get_pdf_path_by_doc_id(doc_id)
+
+    if not pdf_path:
+        raise HTTPException(status_code=404, detail="PDF not found.")
+
+    return FileResponse(pdf_path, media_type="application/pdf")

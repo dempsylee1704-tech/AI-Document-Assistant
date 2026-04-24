@@ -14,7 +14,7 @@ def create_embedding(text):
 
     return response.data[0].embedding
 
-def create_embbeddings_for_chunks(chunks):
+def create_embeddings_for_chunks(chunks):
     embedded_chunks = []
     for chunk in chunks:
         text = chunk.get("text")

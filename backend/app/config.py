@@ -10,4 +10,5 @@ CHUNK_CHAR_SIZE = int(os.getenv("CHUNK_CHAR_SIZE", "1024"))
 CHUNK_CHAR_OVERLAP = int(os.getenv("CHUNK_CHAR_OVERLAP", "200"))
 QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+PUBLIC_BASE_URL = "https://playpen-falsify-fried.ngrok-free.dev"
 
