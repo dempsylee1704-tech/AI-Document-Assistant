@@ -87,8 +87,8 @@ def search_chunks(query, collection_name="documents", k=3, doc_id=None):
         result_chunk = {
             **r.payload,
             "score": r.score,
-            "pdf_url": f"{PUBLIC_BASE_URL}/pdf/{r.payload['doc_id']}#page={r.payload.get('page_no', 1)}",
-            "page": r.payload.get("page_no", 1)
+            "pdf_url": f"{PUBLIC_BASE_URL}/pdf/{r.payload['doc_id']}#page={r.payload.get('page_start', 1)}",
+            "page": r.payload.get("page_start", 1)
         }
         chunks.append(result_chunk)
 

@@ -40,7 +40,7 @@ async def upload_file(
         ):
 
     if not file.filename.lower().endswith(".pdf"):
-        HTTPException(status_code=400, detail="Only PDF files are allowed.")
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
 
     unique_name = f"{uuid4()}_{file.filename}"
     file_path = RAW_DIR / unique_name
@@ -56,7 +56,7 @@ async def upload_file(
         "path": str(file_path)
     }
 
-@app.get("/pdf/{doc_id}")
+@app.get("/pdf/{doc_id:path}")
 def get_pdf(doc_id: str):
     pdf_path = get_pdf_path_by_doc_id(doc_id)
 

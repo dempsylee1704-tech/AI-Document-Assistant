@@ -1,7 +1,6 @@
 from pathlib import Path
 from config import RAW_DIR, PROCESSED_DIR
 import os
-import json
 
 def list_pdf_files(raw_dir: Path = RAW_DIR) -> list[Path]:
     # Checks if folder exists
@@ -36,21 +35,22 @@ def list_processed_documents():
 
     return documents
 
-def get_pdf_path_by_doc_id(doc_id: str) -> Path | None:
-    manifest_path = PROCESSED_DIR / doc_id / "manifest.json"
-
-    if not manifest_path.exists():
-        return None
-
-    with open(manifest_path, "r", encoding="utf-8") as f:
-        manifest = json.load(f)
-
-    source_filename = manifest.get("source_filename")
-    if not source_filename:
-        return None
-
-    pdf_path = RAW_DIR / source_filename
+def get_pdf_path_by_doc_id(doc_id: str):
+    # exakter Match
+    pdf_path = RAW_DIR / f"{doc_id}.pdf"
     if pdf_path.exists():
         return pdf_path
+
+    # falls .pdf schon dran ist
+    pdf_path = RAW_DIR / doc_id
+    if pdf_path.exists():
+        return pdf_path
+
+    # robuster Fallback: UUID vorne nehmen und passende PDF suchen
+    uuid_part = doc_id.split("_")[0]
+    matches = list(RAW_DIR.glob(f"{uuid_part}*.pdf"))
+
+    if matches:
+        return matches[0]
 
     return None

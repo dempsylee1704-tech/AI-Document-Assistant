@@ -12,6 +12,8 @@ def generate_answer(query, chunks):
 
     prompt = f"""
 You are an assistant that answers questions based on provided context.
+If the answer is not in the context, say that you cannot find it.
+Do not invent information.
 
 Context:
 {context}
@@ -22,12 +24,12 @@ Question:
 Answer:
 """
 
-    respone = client.responses.create(
+    response = client.responses.create(
         model="gpt-4o-mini",
         input=prompt
     )
 
-    return respone.output_text
+    return response.output_text
 
 def ask_documents(query, doc_id=None):
     results = search_chunks(query, doc_id=doc_id)

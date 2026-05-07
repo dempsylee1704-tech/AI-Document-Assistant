@@ -9,7 +9,7 @@ from config import PROCESSED_DIR, CHUNK_CHAR_SIZE, CHUNK_CHAR_OVERLAP
 from metadata_ai import enrich_chunk_metadata
 from embeddings import create_embeddings_for_chunks
 from answer import ask_documents
-from vector_db import create_collection, upload_chunks, search_chunks, create_payload_indexes, delete_collection
+from vector_db import create_collection, upload_chunks, create_payload_indexes, delete_collection
 
 def ingest_pdf_file(pdf_file):
     converter = DocumentConverter()

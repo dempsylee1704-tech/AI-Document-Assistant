@@ -33,4 +33,4 @@ def merge_blocks_to_chunks(blocks, chunk_size, overlap):
             "page_end": page_end
         })
 
-        return chunks
+    return chunks
