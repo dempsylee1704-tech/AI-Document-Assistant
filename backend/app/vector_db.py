@@ -55,7 +55,7 @@ def upload_chunks(chunks, doc_id, source_filename, collection_name="documents"):
 
     return f"{len(points)} chunks uploaded."
 
-def search_chunks(query, collection_name="documents", k=3, doc_id=None):
+def search_chunks(query, collection_name="documents", k=8, doc_id=None):
     query_vector = create_embedding(query)
 
     if doc_id:
@@ -84,12 +84,15 @@ def search_chunks(query, collection_name="documents", k=3, doc_id=None):
     chunks = []
 
     for r in results.points:
+        page = r.payload.get("page_start") or r.payload.get("page_no") or 1
+
         result_chunk = {
             **r.payload,
             "score": r.score,
-            "pdf_url": f"{PUBLIC_BASE_URL}/pdf/{r.payload['doc_id']}#page={r.payload.get('page_start', 1)}",
-            "page": r.payload.get("page_start", 1)
+            "page": page,
+            "pdf_url": f"{PUBLIC_BASE_URL}/pdf/{r.payload['doc_id']}#page={page}",
         }
+
         chunks.append(result_chunk)
 
     return chunks

@@ -1,6 +1,7 @@
 import json
+import time
 
-from openai import OpenAI
+from openai import OpenAI, RateLimitError
 from config import API_KEY
 
 
@@ -37,10 +38,29 @@ def enrich_chunk_metadata(chunk):
     Document section:
     {text}"""
 
-    response = client.responses.create(
-        model="gpt-4o-mini",
-        input=prompt,
-    )
+    try:
+        response = client.responses.create(
+            model="gpt-4o-mini",
+            input=prompt,
+        )
+
+    except RateLimitError:
+        print("OpenAI rate limit reached. Using fallback metadata.")
+
+        return {
+            "summary": "Metadata could not be generated due to rate limit.",
+            "keywords": [],
+            "category": "other"
+        }
+
+    except Exception as e:
+        print(f"Metadata enrichment failed: {e}")
+
+        return {
+            "summary": "Metadata could not be generated.",
+            "keywords": [],
+            "category": "other"
+        }
 
     response_text = response.output_text
 

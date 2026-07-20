@@ -13,30 +13,19 @@ function scoreBg(score: number) {
   return "bg-red-500/10 text-red-600 ring-red-500/20";
 }
 
-function scoreLabel(score: number) {
-  if (score >= 0.8) return "Excellent";
-  if (score >= 0.6) return "Good";
-  if (score >= 0.4) return "Fair";
-  return "Low";
+function scoreLabel(_score: number) {
+  return "Relevance";
 }
 
 export function SourceCard({ source, index }: { source: Source; index: number }) {
   const pageNumber = source.page ?? source.page_start;
-  // Use pdf_url exactly as returned by the backend.
-  // Only append #page=N if the backend URL has no fragment yet.
-  const href = source.pdf_url
-    ? source.pdf_url.includes("#")
-      ? source.pdf_url
-      : pageNumber
-        ? `${source.pdf_url}#page=${pageNumber}`
-        : source.pdf_url
-    : undefined;
+  const href = source.pdf_url ?? undefined;
 
   const handleClick = (e: React.MouseEvent) => {
     if (!href) return;
     e.preventDefault();
     e.stopPropagation();
-    window.open(href, "_blank", "noopener,noreferrer");
+    window.open(source.pdf_url, "_blank", "noopener,noreferrer");
   };
 
   const hasPageRange =
@@ -66,12 +55,12 @@ export function SourceCard({ source, index }: { source: Source; index: number })
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <span className={`rounded-lg px-2.5 py-1 text-xs font-extrabold tabular-nums ring-1 ${scoreBg(source.score)}`}>
-            {(source.score * 100).toFixed(0)}%
-          </span>
-          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className="text-[10px] text-muted-foreground/60 font-medium uppercase tracking-wider">
             {scoreLabel(source.score)}
+          </span>
+          <span className="text-[11px] text-muted-foreground tabular-nums">
+            {(source.score * 100).toFixed(0)}%
           </span>
         </div>
       </div>

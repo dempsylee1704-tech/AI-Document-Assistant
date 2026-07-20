@@ -7,21 +7,45 @@ client = OpenAI(api_key=API_KEY)
 
 def generate_answer(query, chunks):
     context = ""
-    for chunk in chunks:
-        context += chunk["text"] + "\n\n"
+
+    for i, chunk in enumerate(chunks, start=1):
+        context += f"""
+Quelle {i}
+Datei: {chunk.get("source_filename", "unbekannt")}
+Seite: {chunk.get("page_start", chunk.get("page", "unbekannt"))}
+Kategorie: {chunk.get("category", "other")}
+
+Text:
+{chunk.get("text", "")}
+
+---
+"""
 
     prompt = f"""
-You are an assistant that answers questions based on provided context.
-If the answer is not in the context, say that you cannot find it.
-Do not invent information.
+Du bist ein präziser deutscher Dokumenten-Assistent.
 
-Context:
+Beantworte die Frage ausschließlich mit Informationen aus dem gegebenen Kontext.
+
+Wichtige Regeln:
+- Antworte auf Deutsch.
+- Wenn die Frage allgemein ist, z. B. "Worum geht es?", "Was ist das für ein Dokument?" oder "Fasse das Dokument zusammen", dann gib eine kurze Zusammenfassung des Dokuments.
+- Nutze auch Dateiname, Kategorie und Seiteninformationen, wenn sie helfen.
+- Wenn der Kontext nur teilweise lesbar ist, formuliere vorsichtig: "Das Dokument scheint ... zu sein".
+- Sage nur dann, dass du die Information nicht findest, wenn wirklich keine passenden Informationen im Kontext vorhanden sind.
+- Erfinde keine Details, die nicht im Kontext stehen.
+
+Bei Formularen:
+- Erkenne, ob es sich um einen Antrag, Fragebogen, Vertrag, Kontoauszug oder ein anderes Dokument handelt.
+- Beschreibe kurz den Zweck des Dokuments.
+- Nenne keine sensiblen persönlichen Details ausführlich, wenn sie für die Frage nicht nötig sind.
+
+Kontext:
 {context}
 
-Question:
+Frage:
 {query}
 
-Answer:
+Antwort:
 """
 
     response = client.responses.create(

@@ -16,22 +16,46 @@ def list_pdf_files(raw_dir: Path = RAW_DIR) -> list[Path]:
 
 def list_processed_documents():
     documents = []
+    seen_labels = set()
 
     for item in os.listdir(PROCESSED_DIR):
         path = os.path.join(PROCESSED_DIR, item)
 
-        if os.path.isdir(path):
-            label = item
+        if not os.path.isdir(path):
+            continue
 
-            if "_" in item:
-                possible_uuid, rest = item.split("_", 1)
-                if len(possible_uuid) > 20:
-                    label = rest
+        manifest_path = os.path.join(path, "manifest.json")
 
-            documents.append({
-                "doc_id": item,
-                "label": label
-            })
+        # Nur Dokumente anzeigen, die wirklich fertig verarbeitet wurden
+        if not os.path.exists(manifest_path):
+            continue
+
+        label = item
+
+        # Wenn vorne eine UUID steht, für die Anzeige entfernen
+        if "_" in item:
+            possible_uuid, rest = item.split("_", 1)
+            if len(possible_uuid) > 20:
+                label = rest
+
+        # Dateiendung für schöneren Namen entfernen
+        if label.lower().endswith(".pdf"):
+            label = label[:-4]
+
+        # Doppelte Anzeigenamen überspringen
+        normalized_label = label.strip().lower()
+
+        if normalized_label in seen_labels:
+            continue
+
+        seen_labels.add(normalized_label)
+
+        documents.append({
+            "doc_id": item,
+            "label": label
+        })
+
+    documents.sort(key=lambda d: d["label"].lower())
 
     return documents
 

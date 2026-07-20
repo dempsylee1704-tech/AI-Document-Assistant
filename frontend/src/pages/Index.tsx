@@ -34,9 +34,15 @@ export default function Index() {
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState<AskResponse | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<{ count: number; newDocs: string[] } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const queryClient = useQueryClient();
-  const docs = useQuery({ queryKey: ["documents"], queryFn: fetchDocuments });
+  const docs = useQuery({
+    queryKey: ["documents"],
+    queryFn: fetchDocuments,
+    // Poll every 3s while any uploaded file is still being indexed.
+    refetchInterval: isProcessing ? 3000 : false,
+  });
 
   // Auto-dismiss success banner
   useEffect(() => {
@@ -155,7 +161,11 @@ export default function Index() {
                   <p className="text-[10px] text-muted-foreground">Add files for AI analysis</p>
                 </div>
               </div>
-              <FileUpload onUploadComplete={handleUploadComplete} />
+              <FileUpload
+                onUploadComplete={handleUploadComplete}
+                documents={docs.data}
+                onProcessingChange={setIsProcessing}
+              />
               {uploadSuccess && (
                 <div className="mt-4 flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] backdrop-blur-xl p-3.5 animate-fade-in">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-500">
@@ -227,7 +237,8 @@ export default function Index() {
                     />
                     <Button
                       type="submit"
-                      disabled={ask.isPending || !question.trim()}
+                      disabled={ask.isPending || !question.trim() || isProcessing}
+                      title={isProcessing ? "Waiting for document to finish processing…" : undefined}
                       className="relative rounded-xl h-11 px-6 overflow-hidden bg-gradient-to-r from-primary via-primary to-violet shadow-lg shadow-primary/25 transition-all duration-500 hover:shadow-xl hover:shadow-primary/35 hover:scale-[1.03] active:scale-[0.97] disabled:opacity-40 disabled:shadow-none disabled:scale-100 group animate-gradient-shift"
                     >
                       <span className="absolute inset-0 bg-gradient-to-r from-transparent via-primary-foreground/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />

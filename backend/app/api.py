@@ -8,15 +8,21 @@ from io_utils import list_processed_documents, get_pdf_path_by_doc_id
 from pydantic import BaseModel
 from answer import ask_documents
 from main import ingest_pdf_file
+from typing import  List
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
 class AskRequest(BaseModel):
@@ -30,7 +36,12 @@ def get_documents():
 
 @app.post("/ask")
 def ask_question(request: AskRequest):
+    print("ASK QUERY:", request.query)
+    print("ASK DOC_ID:", request.doc_id)
+
     result = ask_documents(request.query, request.doc_id)
+
+    print("ASK RESULT:", result)
     return result
 
 @app.post("/upload")
@@ -55,6 +66,51 @@ async def upload_file(
         "filename": unique_name,
         "path": str(file_path)
     }
+
+@app.post("/upload-multiple")
+async def upload_multiple_files(
+    background_tasks: BackgroundTasks,
+    files: List[UploadFile] = File(...)
+):
+    uploaded_files = []
+    rejected_files = []
+
+    for file in files:
+        if not file.filename.lower().endswith(".pdf"):
+            rejected_files.append({
+                "filename": file.filename,
+                "reason": "Only PDF files are allowed."
+            })
+            continue
+
+        unique_name = f"{uuid4()}_{file.filename}"
+        file_path = RAW_DIR / unique_name
+
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        background_tasks.add_task(ingest_pdf_file, file_path)
+
+        uploaded_files.append({
+            "filename": file.filename,
+            "stored_filename": unique_name,
+            "status": "processing",
+            "path": str(file_path)
+        })
+
+    if not uploaded_files and rejected_files:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "No valid PDF files uploaded.",
+                "rejected_files": rejected_files
+            }
+        )
+
+    return {
+        "message": "Upload started.",
+        "uploaded_files": uploaded_files,
+        "rejected_files": rejected_files}
 
 @app.get("/pdf/{doc_id:path}")
 def get_pdf(doc_id: str):

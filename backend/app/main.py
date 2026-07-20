@@ -35,8 +35,15 @@ def ingest_pdf_file(pdf_file):
     chunks = merge_blocks_to_chunks(blocks, CHUNK_CHAR_SIZE, CHUNK_CHAR_OVERLAP)
 
     enriched_chunks = []
+
     for chunk in chunks:
-        enriched_chunk = enrich_chunk_metadata(chunk)
+        metadata = enrich_chunk_metadata(chunk)
+
+        enriched_chunk = {
+            **chunk,
+            **metadata
+        }
+
         enriched_chunks.append(enriched_chunk)
 
     embedded_chunks = create_embeddings_for_chunks(enriched_chunks)

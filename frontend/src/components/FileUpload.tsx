@@ -1,18 +1,20 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Upload, X, File, CheckCircle2, CloudUpload, Loader2, AlertCircle } from "lucide-react";
-import { uploadFile } from "@/lib/api";
+import { uploadFile, type DocumentItem } from "@/lib/api";
 
 interface UploadedFile {
   file: File;
   id: string;
-  status: "pending" | "uploading" | "done" | "error";
+  status: "pending" | "uploading" | "processing" | "done" | "error";
 }
 
 interface FileUploadProps {
   onUploadComplete?: (uploaded: { name: string }[]) => void;
+  documents?: DocumentItem[];
+  onProcessingChange?: (isProcessing: boolean) => void;
 }
 
-export function FileUpload({ onUploadComplete }: FileUploadProps) {
+export function FileUpload({ onUploadComplete, documents, onProcessingChange }: FileUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -29,8 +31,10 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
     for (const entry of arr) {
       try {
         await uploadFile(entry.file);
+        // After upload, the doc still needs to be indexed by the backend.
+        // Show "Processing" until it appears in GET /documents.
         setFiles((prev) =>
-          prev.map((f) => (f.id === entry.id ? { ...f, status: "done" } : f))
+          prev.map((f) => (f.id === entry.id ? { ...f, status: "processing" } : f))
         );
         succeeded.push({ name: entry.file.name });
       } catch {
@@ -41,6 +45,36 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
     }
     if (succeeded.length) onUploadComplete?.(succeeded);
   }, [onUploadComplete]);
+
+  // When the documents list updates, flip any processing files whose name
+  // now appears in the backend list to "done".
+  useEffect(() => {
+    if (!documents || documents.length === 0) return;
+    setFiles((prev) => {
+      let changed = false;
+      const next = prev.map((f) => {
+        if (f.status !== "processing") return f;
+        const name = f.file.name.toLowerCase();
+        const match = documents.some((d) => {
+          const label = (d.label || "").toLowerCase();
+          const id = (d.doc_id || "").toLowerCase();
+          return label === name || id === name || label.includes(name) || name.includes(label);
+        });
+        if (match) {
+          changed = true;
+          return { ...f, status: "done" as const };
+        }
+        return f;
+      });
+      return changed ? next : prev;
+    });
+  }, [documents]);
+
+  // Notify parent of processing state (for polling + disabling Ask)
+  useEffect(() => {
+    const isProcessing = files.some((f) => f.status === "processing" || f.status === "uploading");
+    onProcessingChange?.(isProcessing);
+  }, [files, onProcessingChange]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -108,10 +142,26 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{f.file.name}</p>
-                <p className="text-[11px] text-muted-foreground font-mono">{(f.file.size / 1024).toFixed(1)} KB</p>
+                <p className="text-[11px] text-muted-foreground font-mono flex items-center gap-1.5">
+                  <span>{(f.file.size / 1024).toFixed(1)} KB</span>
+                  {f.status === "uploading" && (
+                    <span className="text-primary">• Uploading…</span>
+                  )}
+                  {f.status === "processing" && (
+                    <span className="text-amber-500">• Processing document…</span>
+                  )}
+                  {f.status === "done" && (
+                    <span className="text-emerald-500">• Ready</span>
+                  )}
+                  {f.status === "error" && (
+                    <span className="text-destructive">• Upload failed</span>
+                  )}
+                </p>
               </div>
               <div className="flex items-center gap-2">
-                {f.status === "uploading" && <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />}
+                {(f.status === "uploading" || f.status === "processing") && (
+                  <Loader2 className={`h-4 w-4 animate-spin shrink-0 ${f.status === "processing" ? "text-amber-500" : "text-primary"}`} />
+                )}
                 {f.status === "done" && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
                 {f.status === "error" && <AlertCircle className="h-4 w-4 text-destructive shrink-0" />}
                 <button

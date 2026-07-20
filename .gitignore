@@ -1,15 +1,20 @@
-# IDE
-.idea/
+# Secrets
+.env
+backend/.env
+frontend/.env
 
 # Python
-__pycache__/
-*.pyc
 .venv/
 venv/
+backend/.venv/
+__pycache__/
+*.pyc
 
-# Env / secrets
-.env
+# Frontend
+frontend/node_modules/
+frontend/.workspace/
+frontend/dist/
 
-# Generated data
-backend/app/data/processed/
+# Hochgeladene/verarbeitete Dokumente
 backend/app/data/raw/
+backend/app/data/processed/
