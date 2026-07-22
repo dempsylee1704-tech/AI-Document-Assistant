@@ -12,8 +12,8 @@ from contextlib import asynccontextmanager
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from database import get_db, init_db
-from models import Conversation
-from schemas import ConversationCreate
+from models import Conversation, Message, utc_now
+from schemas import ConversationCreate, MessageCreate
 from fastapi import (
     FastAPI,
     UploadFile,
@@ -119,6 +119,94 @@ def get_conversations(
              }
             for conversation in conversations
         ]
+    }
+
+@app.get("/conversations/{conversation_id}/messages")
+def get_conversation_messages(
+        conversation_id = str,
+        db: Session = Depends(get_db)
+):
+    """
+    Lädt alle Nachrichten eines Chats in zeitlicher Reihenfolge.
+    """
+
+    conversation = db.get(Conversation, conversation_id)
+
+    if conversation is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Conversation not found"
+        )
+
+    statement = (
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.asc())
+    )
+
+    messages = db.scalars(statement).all()
+
+    return {
+        "conversation": {
+            "id": conversation_id,
+            "title": conversation.title
+        },
+        "messages": [
+            {
+                "id": message.id,
+                "role": message.role,
+                "content": message.content,
+                "created_at": message.created_at
+            }
+            for message in messages
+        ]
+    }
+
+
+@app.post("/conversations/{conversation_id}/messages")
+def create_message(
+        conversation_id: str,
+        request: MessageCreate,
+        db: Session = Depends(get_db)
+):
+    """
+    Speichert eine neue Nachricht innerhalb eines Chats.
+    """
+
+    conversation = db.get(Conversation, conversation_id)
+
+    if conversation is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Conversation not found."
+        )
+
+    cleaned_content = request.content.strip()
+
+    if not cleaned_content:
+        raise HTTPException(
+            status_code=400,
+            detail="Message content must not be empty"
+        )
+
+    message = Message(
+        conversation_id=conversation.id,
+        role=request.role,
+        content=cleaned_content
+    )
+
+    conversation.updated_at = utc_now()
+
+    db.add(message)
+    db.commit()
+    db.refresh(message)
+
+    return {
+        "id": message.id,
+        "conversation_id": message.conversation_id,
+        "role": message.role,
+        "content": message.content,
+        "created_at": message.created_at
     }
 
 @app.post("/upload")

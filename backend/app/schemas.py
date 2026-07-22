@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Literal
 
 class ConversationCreate(BaseModel):
     """
@@ -10,4 +11,15 @@ class ConversationCreate(BaseModel):
         default="Neuer Chat",
         min_length=1,
         max_length=255
+    )
+
+class MessageCreate(BaseModel):
+    """
+    Daten, die zum Erstellen einer Nachricht benötigt werden.
+    """
+
+    role: Literal["user", "assistant"]
+
+    content: str = Field(
+        min_length=1
     )

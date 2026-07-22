@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from mailbox import Message
 from uuid import uuid4
 
 from sqlalchemy import DateTime, String, ForeignKey, Text
@@ -43,4 +44,49 @@ class Conversation(Base):
         nullable=False,
         default=utc_now,
         onupdate=utc_now
+    )
+
+    messages: Mapped[list["Message"]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan"
+    )
+
+class Message(Base):
+    """
+    Repräsentiert eine einzelne Nachricht innerhalb eines Chats.
+    """
+
+    __tablename__ = "messages"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid4())
+    )
+
+    conversation_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("conversations.id"),
+        nullable=False,
+        index=True
+    )
+
+    role: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False
+    )
+
+    content: Mapped[str] = mapped_column(
+        Text,
+        nullable=False
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now
+    )
+
+    conversation: Mapped["Conversation"] = relationship(
+        back_populates="messages"
     )
