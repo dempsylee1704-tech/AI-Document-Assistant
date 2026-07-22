@@ -1,6 +1,5 @@
 import shutil
 from uuid import uuid4
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from config import RAW_DIR
@@ -9,8 +8,31 @@ from pydantic import BaseModel
 from answer import ask_documents
 from main import ingest_pdf_file
 from typing import  List
+from contextlib import asynccontextmanager
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from database import get_db, init_db
+from models import Conversation
+from schemas import ConversationCreate
+from fastapi import (
+    FastAPI,
+    UploadFile,
+    File,
+    HTTPException,
+    BackgroundTasks,
+    Depends)
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Wird beim Start des Backends ausgeführt.
+    """
+
+    init_db()
+
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,6 +65,61 @@ def ask_question(request: AskRequest):
 
     print("ASK RESULT:", result)
     return result
+
+@app.post("/conversations")
+def create_conversation(
+        request: ConversationCreate,
+        db: Session = Depends(get_db)
+):
+    """
+    Erstellt einen neuen Chat und speichert ihn in SQLite.
+    """
+
+    cleaned_title = request.title.strip()
+
+    if not cleaned_title:
+        cleaned_title = "Neuer Chat"
+
+    conversation = Conversation(
+        title=cleaned_title
+    )
+
+    db.add(conversation)
+    db.commit()
+    db.refresh(conversation)
+
+    return {
+        "id": conversation.id,
+        "title": conversation.title,
+        "created_at": conversation.created_at,
+        "updated_at": conversation.updated_at
+    }
+
+@app.get("/conversations")
+def get_conversations(
+        db: Session = Depends(get_db)
+):
+    """ 
+    Gibt alle gespeicherten Chats zurück.
+    Der zuletzt geänderte Chat erscheint zuerst. 
+    """
+
+    statement = select(Conversation).order_by(
+        Conversation.updated_at.desc()
+    )
+
+    conversations = db.scalars(statement).all()
+
+    return {
+        "conversations": [
+            {"id": conversation.id,
+             "title": conversation.title,
+             "created_at": conversation.created_at,
+             "updated_at": conversation.updated_at
+             }
+            for conversation in conversations
+        ]
+    }
 
 @app.post("/upload")
 async def upload_file(

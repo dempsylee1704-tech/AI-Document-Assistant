@@ -18,3 +18,8 @@ frontend/dist/
 # Hochgeladene/verarbeitete Dokumente
 backend/app/data/raw/
 backend/app/data/processed/
+
+# Lokale SQLite-Datenbank
+backend/app/data/*.db
+backend/app/data/*.db-shm
+backend/app/data/*.db-wal
