@@ -1,6 +1,7 @@
 from pathlib import Path
 from config import RAW_DIR, PROCESSED_DIR
 import os
+import re
 
 def list_pdf_files(raw_dir: Path = RAW_DIR) -> list[Path]:
     # Checks if folder exists
@@ -60,6 +61,10 @@ def list_processed_documents():
     return documents
 
 def get_pdf_path_by_doc_id(doc_id: str):
+    # Reject path traversal and malformed IDs before touching the filesystem.
+    if Path(doc_id).name != doc_id or not re.fullmatch(r"[A-Za-z0-9._-]+", doc_id):
+        return None
+
     # exakter Match
     pdf_path = RAW_DIR / f"{doc_id}.pdf"
     if pdf_path.exists():

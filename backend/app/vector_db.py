@@ -7,12 +7,16 @@ from embeddings import create_embedding
 import uuid
 
 
-client = QdrantClient(
-    url=QDRANT_URL,
-    api_key=QDRANT_API_KEY
-)
+def get_qdrant_client():
+    if not QDRANT_URL:
+        raise RuntimeError("QDRANT_URL is not configured.")
+    return QdrantClient(
+        url=QDRANT_URL,
+        api_key=QDRANT_API_KEY,
+    )
 
 def create_collection(collection_name="documents"):
+    client = get_qdrant_client()
     collections = client.get_collections().collections
     existing_names = [c.name for c in collections]
     if collection_name in existing_names:
@@ -30,6 +34,7 @@ def create_collection(collection_name="documents"):
     return f"Collection '{collection_name}' created."
 
 def upload_chunks(chunks, doc_id, source_filename, collection_name="documents"):
+    client = get_qdrant_client()
     points = []
 
     for i, chunk in enumerate(chunks):
@@ -56,6 +61,7 @@ def upload_chunks(chunks, doc_id, source_filename, collection_name="documents"):
     return f"{len(points)} chunks uploaded."
 
 def search_chunks(query, collection_name="documents", k=8, doc_id=None):
+    client = get_qdrant_client()
     query_vector = create_embedding(query)
 
     if doc_id:
@@ -98,6 +104,7 @@ def search_chunks(query, collection_name="documents", k=8, doc_id=None):
     return chunks
 
 def create_payload_indexes(collection_name="documents"):
+    client = get_qdrant_client()
     client.create_payload_index(
         collection_name=collection_name,
         field_name="doc_id",
@@ -107,5 +114,6 @@ def create_payload_indexes(collection_name="documents"):
     return "Payload index for doc_id created."
 
 def delete_collection(collection_name="documents"):
+    client = get_qdrant_client()
     client.delete_collection(collection_name=collection_name)
     return f"Collection {collection_name} deleted."

@@ -1,3 +1,5 @@
-# Welcome to your Lovable project
+# AI Document Assistant frontend
 
-TODO: Document your project here
+React and TypeScript user interface for the AI Document Assistant.
+
+See the [main project README](../README.md) for setup, configuration, architecture, and testing instructions.

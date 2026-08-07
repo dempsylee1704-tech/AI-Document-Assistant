@@ -14,6 +14,12 @@ __pycache__/
 frontend/node_modules/
 frontend/.workspace/
 frontend/dist/
+frontend/bun.lock
+frontend/bun.lockb
+frontend_old/
+
+# IDE settings
+.idea/
 
 # Hochgeladene/verarbeitete Dokumente
 backend/app/data/raw/

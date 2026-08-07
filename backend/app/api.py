@@ -1,25 +1,25 @@
 import shutil
+from pathlib import Path
 from uuid import uuid4
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from config import RAW_DIR
+from config import ALLOWED_ORIGINS, API_KEY, MAX_UPLOAD_SIZE, QDRANT_URL, RAW_DIR
 from io_utils import list_processed_documents, get_pdf_path_by_doc_id
 from pydantic import BaseModel
 from answer import ask_documents
 from main import ingest_pdf_file
 from typing import  List
 
-app = FastAPI()
+app = FastAPI(
+    title="AI Document Assistant API",
+    description="Upload PDF documents and ask source-grounded questions about their content.",
+    version="1.0.0",
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,6 +29,16 @@ class AskRequest(BaseModel):
     query: str
     doc_id: str | None = None
 
+@app.get("/health")
+def health_check():
+    return {
+        "status": "ok",
+        "services": {
+            "openai_configured": bool(API_KEY),
+            "qdrant_configured": bool(QDRANT_URL),
+        },
+    }
+
 @app.get("/documents")
 def get_documents():
     docs = list_processed_documents()
@@ -36,13 +46,21 @@ def get_documents():
 
 @app.post("/ask")
 def ask_question(request: AskRequest):
-    print("ASK QUERY:", request.query)
-    print("ASK DOC_ID:", request.doc_id)
+    query = request.query.strip()
+    if not query:
+        raise HTTPException(status_code=422, detail="Question must not be empty.")
+    try:
+        return ask_documents(query, request.doc_id)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="The document service is currently unavailable.") from exc
 
-    result = ask_documents(request.query, request.doc_id)
-
-    print("ASK RESULT:", result)
-    return result
+def validate_pdf(file: UploadFile) -> str:
+    filename = Path(file.filename or "document.pdf").name
+    if not filename.lower().endswith(".pdf") or file.content_type not in {"application/pdf", "application/octet-stream"}:
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
+    if file.size is not None and file.size > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="PDF files must not exceed 25 MB.")
+    return filename
 
 @app.post("/upload")
 async def upload_file(
@@ -50,10 +68,8 @@ async def upload_file(
         file: UploadFile = File()
         ):
 
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
-
-    unique_name = f"{uuid4()}_{file.filename}"
+    filename = validate_pdf(file)
+    unique_name = f"{uuid4()}_{filename}"
     file_path = RAW_DIR / unique_name
 
     with open(file_path, "wb") as buffer:
@@ -64,7 +80,7 @@ async def upload_file(
     return {
         "message": "File uploaded successfully.",
         "filename": unique_name,
-        "path": str(file_path)
+        "status": "processing"
     }
 
 @app.post("/upload-multiple")
@@ -76,14 +92,16 @@ async def upload_multiple_files(
     rejected_files = []
 
     for file in files:
-        if not file.filename.lower().endswith(".pdf"):
+        try:
+            filename = validate_pdf(file)
+        except HTTPException as exc:
             rejected_files.append({
                 "filename": file.filename,
-                "reason": "Only PDF files are allowed."
+                "reason": exc.detail
             })
             continue
 
-        unique_name = f"{uuid4()}_{file.filename}"
+        unique_name = f"{uuid4()}_{filename}"
         file_path = RAW_DIR / unique_name
 
         with open(file_path, "wb") as buffer:
@@ -94,8 +112,7 @@ async def upload_multiple_files(
         uploaded_files.append({
             "filename": file.filename,
             "stored_filename": unique_name,
-            "status": "processing",
-            "path": str(file_path)
+            "status": "processing"
         })
 
     if not uploaded_files and rejected_files:
