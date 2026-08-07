@@ -1,11 +1,12 @@
 import json
-import time
-
 from openai import OpenAI, RateLimitError
 from config import API_KEY
 
 
-client = OpenAI(api_key=API_KEY)
+def get_openai_client():
+    if not API_KEY:
+        raise RuntimeError("OPENAI_API_KEY is not configured.")
+    return OpenAI(api_key=API_KEY)
 
 categories = ["contract",
              "form",
@@ -39,7 +40,7 @@ def enrich_chunk_metadata(chunk):
     {text}"""
 
     try:
-        response = client.responses.create(
+        response = get_openai_client().responses.create(
             model="gpt-4o-mini",
             input=prompt,
         )
@@ -67,15 +68,13 @@ def enrich_chunk_metadata(chunk):
     clean_text = response_text.removeprefix("```json").removesuffix("```").strip()
 
 
-    result = json.loads(clean_text)
-
-
     try:
+        result = json.loads(clean_text)
         summary = result.get("summary")
         keywords = result.get("keywords", [])
         category = result.get("category", "other")
 
-    except:
+    except (json.JSONDecodeError, AttributeError):
         summary = None
         keywords = []
         category = "other"

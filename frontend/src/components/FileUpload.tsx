@@ -108,7 +108,7 @@ export function FileUpload({ onUploadComplete, documents, onProcessingChange }: 
           ref={inputRef}
           type="file"
           multiple
-          accept=".pdf,.doc,.docx,.txt"
+          accept="application/pdf,.pdf"
           className="hidden"
           onChange={(e) => e.target.files && handleUpload(e.target.files)}
         />
@@ -125,7 +125,7 @@ export function FileUpload({ onUploadComplete, documents, onProcessingChange }: 
           <span className="text-primary font-bold underline underline-offset-2 decoration-primary/30">browse</span>
         </p>
         <p className="relative mt-1.5 text-xs text-muted-foreground">
-          PDF, DOC, DOCX, TXT — up to 25 MB
+          PDF only — up to 25 MB
         </p>
       </div>
 

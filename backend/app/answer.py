@@ -3,7 +3,10 @@ from openai import OpenAI
 from vector_db import search_chunks
 from config import API_KEY
 
-client = OpenAI(api_key=API_KEY)
+def get_openai_client():
+    if not API_KEY:
+        raise RuntimeError("OPENAI_API_KEY is not configured.")
+    return OpenAI(api_key=API_KEY)
 
 def generate_answer(query, chunks):
     context = ""
@@ -48,7 +51,7 @@ Frage:
 Antwort:
 """
 
-    response = client.responses.create(
+    response = get_openai_client().responses.create(
         model="gpt-4o-mini",
         input=prompt
     )
